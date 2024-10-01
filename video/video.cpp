@@ -15,9 +15,16 @@ void detect_faces(cv::Mat& frame, cv::CascadeClassifier& face_cascade) {
     face_cascade.detectMultiScale(gray, faces, 1.1, 5, 0, cv::Size(30, 30));
 
     // Draw a green rectangle around each detected face
-    for (const auto& face : faces) {
-        cv::rectangle(frame, face, cv::Scalar(0, 255, 0), 2);
+    #pragma omp parallel for
+    for (int i = 0; i < faces.size(); i++) {
+        cv::rectangle(frame, faces[i], cv::Scalar(0, 255, 0), 2);
     }
+}
+
+// Function to apply some additional processing to the frame (example)
+void apply_processing(cv::Mat& frame) {
+    // Example: Apply Gaussian blur
+    cv::GaussianBlur(frame, frame, cv::Size(5, 5), 0);
 }
 
 int main() {
@@ -41,11 +48,20 @@ int main() {
         cap >> frame; // Capture the current frame
         if (frame.empty()) break; // Exit the loop if no frame is captured
 
-        // Process the frame in parallel using OpenMP
-        #pragma omp parallel
+        // Process the frame using OpenMP
+        #pragma omp parallel sections
         {
-            #pragma omp single nowait
-            detect_faces(frame, face_cascade); // Call the face detection function
+            // Section 1: Detect faces
+            #pragma omp section
+            {
+                detect_faces(frame, face_cascade);
+            }
+
+            // Section 2: Perform other processing
+            #pragma omp section
+            {
+                apply_processing(frame);
+            }
         }
 
         // Display the processed frame

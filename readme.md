@@ -27,7 +27,7 @@ To compile the video program:
 
 ```bash
 cd video
-g++ vide.cpp -o face_detection `pkg-config --cflags --libs opencv4` -fopenmp
+++ -fopenmp -o face_detection_parallel video.cpp `pkg-config --cflags --libs opencv4`  -O2
 ```
 
 ### 2. Compiling the Image Face Detection Program
