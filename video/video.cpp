@@ -4,14 +4,13 @@
 #include <vector>
 #include <omp.h>
 
-// Function to detect faces in a single frame
-void detect_faces(cv::Mat& frame, cv::CascadeClassifier& face_cascade) {
+// Function to detect faces and highlight them with green rectangles
+void detect_faces(cv::Mat& frame, cv::CascadeClassifier& face_cascade, std::vector<cv::Rect>& faces) {
     // Convert the frame to grayscale
     cv::Mat gray;
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
 
     // Detect faces
-    std::vector<cv::Rect> faces;
     face_cascade.detectMultiScale(gray, faces, 1.1, 5, 0, cv::Size(30, 30));
 
     // Draw a green rectangle around each detected face
@@ -21,10 +20,37 @@ void detect_faces(cv::Mat& frame, cv::CascadeClassifier& face_cascade) {
     }
 }
 
-// Function to apply some additional processing to the frame (example)
-void apply_processing(cv::Mat& frame) {
-    // Example: Apply Gaussian blur
+// Function to apply processing, preserving green rectangles
+void apply_processing(cv::Mat& frame, const std::vector<cv::Rect>& faces) {
+    // Apply Gaussian blur
     cv::GaussianBlur(frame, frame, cv::Size(5, 5), 0);
+
+    // Edge detection using Canny
+    cv::Mat edges;
+    cv::Canny(frame, edges, 100, 200);
+
+    // Convert edges to BGR for display
+    cv::Mat edges_bgr;
+    cv::cvtColor(edges, edges_bgr, cv::COLOR_GRAY2BGR);
+
+    // Increase brightness and contrast
+    cv::Mat brighter_frame;
+    frame.convertTo(brighter_frame, -1, 1.2, 30); // Increase contrast by 1.2 and brightness by 30
+
+    // Merge results with some weighted sum for visual effect
+    cv::addWeighted(brighter_frame, 0.6, edges_bgr, 0.4, 0, frame);
+
+    // Preserve the green rectangles on the face areas
+    #pragma omp parallel for
+    for (int i = 0; i < faces.size(); i++) {
+        // Extract the face region from the original frame
+        cv::Mat face_roi = frame(faces[i]);
+        cv::Mat green_face = cv::Mat::zeros(face_roi.size(), face_roi.type());
+
+        // Make the face green while preserving its shape
+        green_face.setTo(cv::Scalar(0, 255, 0));
+        cv::addWeighted(face_roi, 0.5, green_face, 0.5, 0, face_roi);
+    }
 }
 
 int main() {
@@ -48,24 +74,26 @@ int main() {
         cap >> frame; // Capture the current frame
         if (frame.empty()) break; // Exit the loop if no frame is captured
 
+        std::vector<cv::Rect> faces;
+
         // Process the frame using OpenMP
         #pragma omp parallel sections
         {
             // Section 1: Detect faces
             #pragma omp section
             {
-                detect_faces(frame, face_cascade);
+                detect_faces(frame, face_cascade, faces);
             }
 
-            // Section 2: Perform other processing
+            // Section 2: Perform additional processing
             #pragma omp section
             {
-                apply_processing(frame);
+                apply_processing(frame, faces);
             }
         }
 
         // Display the processed frame
-        cv::imshow("Face Detection", frame);
+        cv::imshow("Face Detection and Processing", frame);
 
         // Break the loop on 'q' key press
         if (cv::waitKey(1) == 'q') break;

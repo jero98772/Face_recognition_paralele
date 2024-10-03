@@ -38,8 +38,8 @@ void detect_faces(const std::string& image_path, const std::string& output_path)
 
 int main() {
     // Example list of images to process
-    std::vector<std::string> image_paths = {"1.jpg", "2.jpg", "3.jpg"}; // Add your image paths here
-    std::vector<std::string> output_paths = {"output1.jpg", "output2.jpg", "output3.jpg"};
+    std::vector<std::string> image_paths = {"1.jpg", "2.jpg", "3.jpg","4.jpeg"}; // Add your image paths here
+    std::vector<std::string> output_paths = {"output1.jpg", "output2.jpg", "output3.jpg","output4.jpeg"};
 
     // Use OpenMP to process images in parallel
     #pragma omp parallel for
